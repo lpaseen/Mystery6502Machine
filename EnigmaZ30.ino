@@ -1,6 +1,14 @@
+/* 2017-01-02 Peter Sjoberg <peters-src AT techwiz DOT ca>
+ *      added option to get output in letters instead of always numbers
+ *      made printkey a little easier to read
+*/
+
+
 #define ringsettingkeyidx 3
 #define rotorkeyidx 7
 #define keyinoutidx 11
+
+boolean letter=false; // whatever we have letters or numeric output
 
 byte enigmakey[] = {
   //1, 2, 3, 1, 6, 7, 8, 4, 9, 8, 6, 0, 0
@@ -117,6 +125,24 @@ void printkey() {
     }
   }
   Serial.println("");
+
+  Serial.print("Rotor:  ");
+  for (char i = 0; i < 3; i++) {
+    Serial.print(enigmakey[i]);
+  }
+  Serial.println();
+
+  Serial.print("Ring : ");
+  for (char i = 3; i < 7; i++) {
+    Serial.print(enigmakey[i]);
+  }
+  Serial.println();
+
+  Serial.print("Wheel: ");
+  for (char i = 7; i < 11; i++) {
+    Serial.print(enigmakey[i]);
+  }
+  Serial.println();
 }
 
 void printrotor() {
@@ -161,7 +187,27 @@ void setwheel(int wheel) {
 byte groups = 0;
 void print(byte o)
 {
-  Serial.print(o);
+  static boolean firstbyte=true;
+  static uint8_t prevbyte;
+  
+  if (letter){
+        if (firstbyte){
+                prevbyte=o;
+                firstbyte=false;
+                return;
+        }else{
+                firstbyte=true;
+                prevbyte=prevbyte*10+o;
+                if (prevbyte>26){
+                        prevbyte='?';
+                }else{
+                        prevbyte+='@';
+                }
+                Serial.print((char)prevbyte);
+        }
+  }else{
+   Serial.print(o);
+  }
   if (groups++ == 3) {
     Serial.print(' ');
     groups = 0;
@@ -196,13 +242,12 @@ int encode(const char str[]) {
     }
 
   } while (true);
-
 }
 
 void setup() {
   // put your setup code here, to run once:
 
-  Serial.begin(9600);
+  Serial.begin(38400);
 
   settype(312);
   setrings(4257);
@@ -210,15 +255,27 @@ void setup() {
 
   printkey();
 
-  char msgkey[] = "0000";
+  char msgkey[] = "1294";
+  Serial.print("msg key decode: ");
   encode(msgkey);
+  Serial.println();
 
-  setwheel(3359);
-
-  Serial.println(' ');
+  setwheel(2782);
 
   char msg[] = "TEST";
+  Serial.println("encoding TEST");
   encode(msg);
+  Serial.println();
+
+  setwheel(2782);
+  Serial.println("decode 8963 2453, should be TEST");
+  letter=true;
+  char msg2[] = "89632453";
+  encode(msg2);
+  Serial.println();
+  letter=false;
+  Serial.println();
+  printkey();
 }
 
 byte KeyPressed = 0;
@@ -235,7 +292,7 @@ void loop() {
   {
     KeyPressed = Serial.read();
 
-    if (KeyPressed == '!') {
+    if (KeyPressed == '!') { // select rotors, "!123"
       SetType = 3;
 
       SetRing = 0;
@@ -244,7 +301,7 @@ void loop() {
       Serial.println("");
     }
 
-    if (KeyPressed == '@') {
+    if (KeyPressed == '@') { // set ringstellung "@1234"
       SetRing = 4;
 
       SetType = 0;
@@ -253,7 +310,7 @@ void loop() {
       Serial.println("");
     }
 
-    if (KeyPressed == '#') {
+    if (KeyPressed == '#') { // set start weel position "#5678"
       SetWheel = 4;
 
       SetType = 0;
@@ -262,10 +319,22 @@ void loop() {
       Serial.println("");
     }
 
-    if (KeyPressed == '$') {
+    if (KeyPressed == '$') { // print out current key settings
       groups = 0;
       Serial.println("");
       printkey();
+    }
+
+    if (KeyPressed == 'l') { // set letter output
+      letter=true;
+      groups = 0;
+      Serial.println(F("Letter output"));
+    }
+
+    if (KeyPressed == 'n') { // set numeric output
+      letter=false;
+      groups = 0;
+      Serial.println(F("numeric output"));
     }
 
     if ((KeyPressed >= '0') && (KeyPressed <= '9')) {
